@@ -25,6 +25,7 @@ func (c *Config) SetUser(userName string) {
 		log.Fatalf("config::SetUser: Ran into a issue updating config: %v", err)
 	}
 
+	c.CurrentUserName = userName
 }
 
 func mapConfigToJson(cfg Config) ([]byte, error) {

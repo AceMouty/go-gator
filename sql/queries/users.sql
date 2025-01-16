@@ -7,3 +7,16 @@ VALUES (
     $4
 )
 RETURNING *;
+
+-- name: GetUser :one
+SELECT * 
+FROM users
+WHERE users.name = $1;
+
+-- name: UserExists :one
+SELECT EXISTS (
+    SELECT 1 
+    FROM users 
+    WHERE name = $1
+) AS exists;
+
