@@ -36,6 +36,7 @@ func main() {
 
 	commandStore.register("login", handlerLogin)
 	commandStore.register("register", handlerRegitser)
+	commandStore.register("reset", handlerReset)
 
 	err := commandStore.run(&appState, command)
 	if err != nil {

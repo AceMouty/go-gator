@@ -14,8 +14,18 @@ func handlerLogin(s *state, cmd command) error {
 		return errors.New("expected a single argument, username")
 	}
 
-	s.cfg.CurrentUserName = cmd.args[0]
-	s.cfg.SetUser(cmd.args[0])
+	userName := cmd.args[0]
+	userExists, err := s.db.UserExists(context.Background(), userName)
+	if err != nil {
+		log.Fatalf("ran into a issue checking if user exists: %v", err)
+	}
+
+	if !userExists {
+		log.Fatalf("user %v doesnt exist", userName)
+	}
+
+	s.cfg.CurrentUserName = userName
+	s.cfg.SetUser(userName)
 
 	return nil
 }
@@ -28,7 +38,7 @@ func handlerRegitser(s *state, cmd command) error {
 	userName := cmd.args[0]
 	userExists, err := s.db.UserExists(context.Background(), userName)
 	if err != nil {
-		return err
+		log.Fatalf("ran into a issue checking if user exists: %v", err)
 	}
 
 	if userExists {
@@ -51,6 +61,16 @@ func handlerRegitser(s *state, cmd command) error {
 
 	log.Println("registered user successfully")
 	s.cfg.SetUser(userName)
+
+	return nil
+}
+
+func handlerReset(s *state, cmd command) error {
+	err := s.db.DeleteUsers(context.Background())
+
+	if err != nil {
+		log.Fatalf("ran into a issue deleting users: %v", err)
+	}
 
 	return nil
 }

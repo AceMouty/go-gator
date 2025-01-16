@@ -20,3 +20,5 @@ SELECT EXISTS (
     WHERE name = $1
 ) AS exists;
 
+-- name: DeleteUsers :exec
+DELETE FROM users;
