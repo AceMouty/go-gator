@@ -1,7 +1,9 @@
 package main
 
 import (
+	"database/sql"
 	"github.com/acemouty/gator/internal/config"
+	_ "github.com/lib/pq"
 	"log"
 	"os"
 )
@@ -12,6 +14,7 @@ type command struct {
 }
 
 type state struct {
+	db  *database.Queries
 	cfg *config.Config
 }
 
@@ -23,6 +26,8 @@ func main() {
 	}
 
 	cfg := config.Read()
+	db, err := sql.Open("postgres", cfg.DbUrl)
+
 	appState := state{cfg: &cfg}
 	command := command{name: args[0], args: args[1:]}
 	commandStore := commandStore{commandsMap: make(commandMap)}
