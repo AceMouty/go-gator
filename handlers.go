@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/acemouty/gator/internal/database"
 	"github.com/google/uuid"
 	"log"
@@ -70,6 +71,25 @@ func handlerReset(s *state, cmd command) error {
 
 	if err != nil {
 		log.Fatalf("ran into a issue deleting users: %v", err)
+	}
+
+	return nil
+}
+
+func handlerUsers(s *state, cmd command) error {
+	users, err := s.db.GetUsers(context.Background())
+
+	if err != nil {
+		log.Fatalf("ran into a issue getting users: %v", err)
+	}
+
+	for _, user := range users {
+		if user.Name == s.cfg.CurrentUserName {
+			fmt.Printf("%v (current)\n", user.Name)
+			continue
+		}
+
+		fmt.Println(user.Name)
 	}
 
 	return nil
