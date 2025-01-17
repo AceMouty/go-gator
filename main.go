@@ -38,10 +38,13 @@ func main() {
 	commandStore.register("register", handlerRegitser)
 	commandStore.register("reset", handlerReset)
 	commandStore.register("users", handlerUsers)
+	// https://www.wagslane.dev/index.xml
+	commandStore.register("addfeed", handlerAddFeed)
+	commandStore.register("feeds", handlerFeeds)
 
 	err := commandStore.run(&appState, command)
 	if err != nil {
-		log.Fatalf("main: encountered and error running '%v': %v", command.name, err)
+		log.Fatalf("encountered and error running '%v':\n%v", command.name, err)
 	}
 
 }

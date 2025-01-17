@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/acemouty/gator/internal/database"
+	"github.com/acemouty/gator/internal/service"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"log"
 	"time"
 )
@@ -92,5 +94,73 @@ func handlerUsers(s *state, cmd command) error {
 		fmt.Println(user.Name)
 	}
 
+	return nil
+}
+
+func handlerAddFeed(s *state, cmd command) error {
+	if len(cmd.args) < 2 {
+		return errors.New("expected a <feed_name> and a <feed_url> to be provided")
+	}
+
+	currentUserName := s.cfg.CurrentUserName
+	if currentUserName == "" {
+		return errors.New("Must be signed in before you can add a feed")
+	}
+
+	ctx := context.Background()
+	userExists, err := s.db.UserExists(ctx, currentUserName)
+	if err != nil {
+		return err
+	}
+
+	if !userExists {
+		errMsg := fmt.Sprintf("Username of %v does not exist", currentUserName)
+		return errors.New(errMsg)
+	}
+
+	feedName := cmd.args[0]
+	rssUrl := cmd.args[1]
+
+	_, err = service.FetchFeed(context.Background(), rssUrl)
+	if err != nil {
+		return err
+	}
+
+	user, err := s.db.GetUser(ctx, currentUserName)
+	if err != nil {
+		return err
+	}
+
+	queryData := database.CreateFeedParams{
+		ID:        uuid.New(),
+		Name:      feedName,
+		Url:       rssUrl,
+		UserID:    user.ID,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	createdFeed, err := s.db.CreateFeed(ctx, queryData)
+	if err != nil {
+		uniqeConstratintError := "23505"
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == pq.ErrorCode(uniqeConstratintError) {
+			return errors.New("feed URL already exists")
+		}
+		return err
+	}
+
+	fmt.Println(createdFeed)
+	return nil
+}
+
+func handlerFeeds(s *state, cmd command) error {
+	feeds, err := s.db.GetFeeds(context.Background())
+	if err != nil {
+		return err
+	}
+
+	for _, feed := range feeds {
+		fmt.Printf("Feed Name: %v | Feed Url: %v | Added By: %v\n", feed.Name, feed.Url, feed.Username)
+	}
 	return nil
 }
