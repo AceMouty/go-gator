@@ -34,14 +34,15 @@ func main() {
 	command := command{name: args[0], args: args[1:]}
 	commandStore := commandStore{commandsMap: make(commandMap)}
 
-	commandStore.register("login", handlerLogin)
-	commandStore.register("register", handlerRegitser)
 	commandStore.register("reset", handlerReset)
-	commandStore.register("users", handlerUsers)
-	commandStore.register("addfeed", handlerAddFeed)
-	commandStore.register("feeds", handlerFeeds)
-	commandStore.register("follow", handlerFollow)
-	commandStore.register("following", handlerFollowing)
+	commandStore.register("register", middlewareUserExists(handlerRegitser))
+	commandStore.register("login", middlewareValidateUser(handlerLogin))
+	commandStore.register("users", middlewareValidateUser(handlerUsers))
+	commandStore.register("addfeed", middlewareValidateUser(handlerAddFeed))
+	commandStore.register("feeds", middlewareValidateUser(handlerFeeds))
+	commandStore.register("follow", middlewareValidateUser(handlerFollow))
+	commandStore.register("unfollow", middlewareValidateUser(handlerUnfollow))
+	commandStore.register("following", middlewareValidateUser(handlerFollowing))
 
 	err := commandStore.run(&appState, command)
 	if err != nil {

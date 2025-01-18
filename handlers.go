@@ -12,22 +12,12 @@ import (
 	"time"
 )
 
-func handlerLogin(s *state, cmd command) error {
+func handlerLogin(s *state, cmd command, user database.User) error {
 	if len(cmd.args) == 0 {
 		return errors.New("expected a single argument, username")
 	}
 
 	userName := cmd.args[0]
-	userExists, err := s.db.UserExists(context.Background(), userName)
-	if err != nil {
-		log.Fatalf("ran into a issue checking if user exists: %v", err)
-	}
-
-	if !userExists {
-		log.Fatalf("user %v doesnt exist", userName)
-	}
-
-	s.cfg.CurrentUserName = userName
 	s.cfg.SetUser(userName)
 
 	return nil
@@ -39,15 +29,6 @@ func handlerRegitser(s *state, cmd command) error {
 	}
 
 	userName := cmd.args[0]
-	userExists, err := s.db.UserExists(context.Background(), userName)
-	if err != nil {
-		log.Fatalf("ran into a issue checking if user exists: %v", err)
-	}
-
-	if userExists {
-		log.Fatalf("User with name %v already registered", userName)
-	}
-
 	newId := uuid.New()
 	now := time.Now()
 	queryData := database.CreateUserParams{
@@ -57,7 +38,7 @@ func handlerRegitser(s *state, cmd command) error {
 		Name:      userName,
 	}
 
-	_, err = s.db.CreateUser(context.Background(), queryData)
+	_, err := s.db.CreateUser(context.Background(), queryData)
 	if err != nil {
 		log.Fatalf("unable to register user %v: reason; %v", userName, err)
 	}
@@ -78,7 +59,7 @@ func handlerReset(s *state, cmd command) error {
 	return nil
 }
 
-func handlerUsers(s *state, cmd command) error {
+func handlerUsers(s *state, cmd command, user database.User) error {
 	users, err := s.db.GetUsers(context.Background())
 
 	if err != nil {
@@ -97,7 +78,7 @@ func handlerUsers(s *state, cmd command) error {
 	return nil
 }
 
-func handlerAddFeed(s *state, cmd command) error {
+func handlerAddFeed(s *state, cmd command, user database.User) error {
 	if len(cmd.args) < 2 {
 		return errors.New("expected a <feed_name> and a <feed_url> to be provided")
 	}
@@ -108,25 +89,10 @@ func handlerAddFeed(s *state, cmd command) error {
 	}
 
 	ctx := context.Background()
-	userExists, err := s.db.UserExists(ctx, currentUserName)
-	if err != nil {
-		return err
-	}
-
-	if !userExists {
-		errMsg := fmt.Sprintf("Username of %v does not exist", currentUserName)
-		return errors.New(errMsg)
-	}
-
 	feedName := cmd.args[0]
 	rssUrl := cmd.args[1]
 
-	_, err = service.FetchFeed(context.Background(), rssUrl)
-	if err != nil {
-		return err
-	}
-
-	user, err := s.db.GetUser(ctx, currentUserName)
+	_, err := service.FetchFeed(context.Background(), rssUrl)
 	if err != nil {
 		return err
 	}
@@ -167,7 +133,7 @@ func handlerAddFeed(s *state, cmd command) error {
 	return nil
 }
 
-func handlerFeeds(s *state, cmd command) error {
+func handlerFeeds(s *state, cmd command, user database.User) error {
 	feeds, err := s.db.GetFeeds(context.Background())
 	if err != nil {
 		return err
@@ -179,7 +145,7 @@ func handlerFeeds(s *state, cmd command) error {
 	return nil
 }
 
-func handlerFollow(s *state, cmd command) error {
+func handlerFollow(s *state, cmd command, user database.User) error {
 	if len(cmd.args) == 0 {
 		return errors.New("Expected to be provided a url")
 	}
@@ -200,16 +166,11 @@ func handlerFollow(s *state, cmd command) error {
 		return errors.New("Unable to grab feed at this time")
 	}
 
-	currentUser, err := s.db.GetUser(context.Background(), s.cfg.CurrentUserName)
-	if err != nil {
-		return errors.New("Unable to grab user information at this time")
-	}
-
 	queryData := database.CreateFeedFollowParams{
 		ID:        uuid.New(),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		UserID:    currentUser.ID,
+		UserID:    user.ID,
 		FeedID:    feed.ID,
 	}
 
@@ -218,21 +179,27 @@ func handlerFollow(s *state, cmd command) error {
 		return errors.New("Unable to follow feed at this time")
 	}
 
-	fmt.Printf("User %v now following %v", currentUser.Name, feed.Url)
+	fmt.Printf("User %v now following %v", user.Name, feed.Url)
 	return nil
 }
 
-func handlerFollowing(s *state, cmd command) error {
-	userExists, err := s.db.UserExists(context.Background(), s.cfg.CurrentUserName)
+func handlerUnfollow(s *state, cmd command, user database.User) error {
+	if len(cmd.args) == 0 {
+		return errors.New("Expected one argument <feed_url>")
+	}
+
+	feedUrl := cmd.args[0]
+	deleteFeedFollowParams := database.DeleteFeedFollowParams{UserID: user.ID, Url: feedUrl}
+	err := s.db.DeleteFeedFollow(context.Background(), deleteFeedFollowParams)
 	if err != nil {
-		return errors.New("Unable to grab user information at this time")
+		return errors.New("Unable to delete feed at this time")
 	}
+	return nil
+}
 
-	if !userExists {
-		return errors.New("Unable to verify user")
-	}
+func handlerFollowing(s *state, cmd command, user database.User) error {
 
-	followingFeeds, err := s.db.GetFeedFollowsForUser(context.Background(), s.cfg.CurrentUserName)
+	followingFeeds, err := s.db.GetFeedFollowsForUser(context.Background(), user.Name)
 	if err != nil {
 		fmt.Println(err)
 		return errors.New("Unable to get users following feeds")
