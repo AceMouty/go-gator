@@ -17,3 +17,16 @@ SELECT
   ,u.name username
 FROM feeds f
 JOIN users u ON f.user_id = u.id;
+
+-- name: GetFeed :one
+SELECT *
+FROM feeds f
+WHERE f.url = $1;
+
+-- name: FeedExists :one
+SELECT EXISTS (
+    SELECT 1 
+    FROM feeds f
+    WHERE f.url = $1
+) AS exists;
+

@@ -55,6 +55,41 @@ func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, e
 	return i, err
 }
 
+const feedExists = `-- name: FeedExists :one
+SELECT EXISTS (
+    SELECT 1 
+    FROM feeds f
+    WHERE f.url = $1
+) AS exists
+`
+
+func (q *Queries) FeedExists(ctx context.Context, url string) (bool, error) {
+	row := q.db.QueryRowContext(ctx, feedExists, url)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const getFeed = `-- name: GetFeed :one
+SELECT id, name, url, user_id, created_at, updated_at
+FROM feeds f
+WHERE f.url = $1
+`
+
+func (q *Queries) GetFeed(ctx context.Context, url string) (Feed, error) {
+	row := q.db.QueryRowContext(ctx, getFeed, url)
+	var i Feed
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Url,
+		&i.UserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getFeeds = `-- name: GetFeeds :many
 SELECT 
   f.name

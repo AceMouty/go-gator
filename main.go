@@ -38,9 +38,10 @@ func main() {
 	commandStore.register("register", handlerRegitser)
 	commandStore.register("reset", handlerReset)
 	commandStore.register("users", handlerUsers)
-	// https://www.wagslane.dev/index.xml
 	commandStore.register("addfeed", handlerAddFeed)
 	commandStore.register("feeds", handlerFeeds)
+	commandStore.register("follow", handlerFollow)
+	commandStore.register("following", handlerFollowing)
 
 	err := commandStore.run(&appState, command)
 	if err != nil {

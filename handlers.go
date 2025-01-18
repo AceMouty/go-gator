@@ -131,7 +131,7 @@ func handlerAddFeed(s *state, cmd command) error {
 		return err
 	}
 
-	queryData := database.CreateFeedParams{
+	createFeedParams := database.CreateFeedParams{
 		ID:        uuid.New(),
 		Name:      feedName,
 		Url:       rssUrl,
@@ -140,7 +140,7 @@ func handlerAddFeed(s *state, cmd command) error {
 		UpdatedAt: time.Now(),
 	}
 
-	createdFeed, err := s.db.CreateFeed(ctx, queryData)
+	createdFeed, err := s.db.CreateFeed(ctx, createFeedParams)
 	if err != nil {
 		uniqeConstratintError := "23505"
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == pq.ErrorCode(uniqeConstratintError) {
@@ -149,7 +149,21 @@ func handlerAddFeed(s *state, cmd command) error {
 		return err
 	}
 
+	createFollowFeedParams := database.CreateFeedFollowParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		UserID:    user.ID,
+		FeedID:    createdFeed.ID,
+	}
+
+	_, err = s.db.CreateFeedFollow(context.Background(), createFollowFeedParams)
+	if err != nil {
+		return errors.New("Unable to follow feed at this time")
+	}
+
 	fmt.Println(createdFeed)
+	fmt.Printf("\n%v now following %v\n", user.Name, createdFeed.Url)
 	return nil
 }
 
@@ -162,5 +176,71 @@ func handlerFeeds(s *state, cmd command) error {
 	for _, feed := range feeds {
 		fmt.Printf("Feed Name: %v | Feed Url: %v | Added By: %v\n", feed.Name, feed.Url, feed.Username)
 	}
+	return nil
+}
+
+func handlerFollow(s *state, cmd command) error {
+	if len(cmd.args) == 0 {
+		return errors.New("Expected to be provided a url")
+	}
+
+	feedUrl := cmd.args[0]
+	feedExists, err := s.db.FeedExists(context.Background(), feedUrl)
+	if err != nil {
+		return errors.New("Unable to validate feed url at this time")
+	}
+
+	if !feedExists {
+		errMsg := fmt.Sprintf("Feed %v doesnt exist", feedUrl)
+		return errors.New(errMsg)
+	}
+
+	feed, err := s.db.GetFeed(context.Background(), feedUrl)
+	if err != nil {
+		return errors.New("Unable to grab feed at this time")
+	}
+
+	currentUser, err := s.db.GetUser(context.Background(), s.cfg.CurrentUserName)
+	if err != nil {
+		return errors.New("Unable to grab user information at this time")
+	}
+
+	queryData := database.CreateFeedFollowParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		UserID:    currentUser.ID,
+		FeedID:    feed.ID,
+	}
+
+	_, err = s.db.CreateFeedFollow(context.Background(), queryData)
+	if err != nil {
+		return errors.New("Unable to follow feed at this time")
+	}
+
+	fmt.Printf("User %v now following %v", currentUser.Name, feed.Url)
+	return nil
+}
+
+func handlerFollowing(s *state, cmd command) error {
+	userExists, err := s.db.UserExists(context.Background(), s.cfg.CurrentUserName)
+	if err != nil {
+		return errors.New("Unable to grab user information at this time")
+	}
+
+	if !userExists {
+		return errors.New("Unable to verify user")
+	}
+
+	followingFeeds, err := s.db.GetFeedFollowsForUser(context.Background(), s.cfg.CurrentUserName)
+	if err != nil {
+		fmt.Println(err)
+		return errors.New("Unable to get users following feeds")
+	}
+
+	for _, feed := range followingFeeds {
+		fmt.Printf("Feed Name: %v\n", feed.Feedname)
+	}
+
 	return nil
 }
