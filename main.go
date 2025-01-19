@@ -35,6 +35,7 @@ func main() {
 	commandStore := commandStore{commandsMap: make(commandMap)}
 
 	commandStore.register("reset", handlerReset)
+	commandStore.register("agg", handlerAgg)
 	commandStore.register("register", middlewareUserExists(handlerRegitser))
 	commandStore.register("login", middlewareValidateUser(handlerLogin))
 	commandStore.register("users", middlewareValidateUser(handlerUsers))

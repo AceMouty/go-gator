@@ -12,6 +12,38 @@ import (
 	"time"
 )
 
+func handlerAgg(s *state, cmd command) error {
+	if len(cmd.args) == 0 {
+		return fmt.Errorf("useage: %v <time_between_requests> ex time formats 1s, 1m or 1h", cmd.name)
+	}
+
+	time_between_requests, err := time.ParseDuration(cmd.args[0])
+	if err != nil {
+		return errors.New("Unable to create interval and aggregate at this time")
+	}
+
+	ticker := time.NewTicker(time_between_requests)
+	fmt.Printf("Collecting feeds every %v", cmd.args[0])
+
+	/*
+			  The agg command is a never-ending loop that fetches feeds and prints posts to the console.
+		    The intended use case is to leave the agg command running in the background while
+		    interacting with the program in another terminal.
+	*/
+	for ; ; <-ticker.C {
+		scrapeFeeds(s.db)
+	}
+	//	feed, err := service.FetchFeed(context.Background(), feedUrl)
+	//if err != nil {
+	//	return fmt.Errorf("unable to fetch feed: %v", feedUrl)
+	//}
+
+	//for _, item := range feed.Channel.Item {
+	//	fmt.Printf("Feed: %+v\n", item.Title)
+	//}
+
+}
+
 func handlerLogin(s *state, cmd command, user database.User) error {
 	if len(cmd.args) == 0 {
 		return errors.New("expected a single argument, username")
