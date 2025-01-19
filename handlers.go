@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"strconv"
+	"time"
+
 	"github.com/acemouty/gator/internal/database"
 	"github.com/acemouty/gator/internal/service"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	"log"
-	"time"
 )
 
 func handlerAgg(s *state, cmd command) error {
@@ -23,25 +25,19 @@ func handlerAgg(s *state, cmd command) error {
 	}
 
 	ticker := time.NewTicker(time_between_requests)
-	fmt.Printf("Collecting feeds every %v", cmd.args[0])
+	fmt.Printf("Collecting feeds every %v\n\n", cmd.args[0])
 
 	/*
-			  The agg command is a never-ending loop that fetches feeds and prints posts to the console.
-		    The intended use case is to leave the agg command running in the background while
-		    interacting with the program in another terminal.
+					  The agg command is a never-ending loop that fetches feeds and prints posts to the console.
+				    The intended use case is to leave the agg command running in the background while
+				    interacting with the program in another terminal.
+
+		        Loop steps at a interval that is provided by the user when running that agg command
 	*/
+	scrapeRound := 0
 	for ; ; <-ticker.C {
-		scrapeFeeds(s.db)
+		scrapeFeeds(s.db, &scrapeRound)
 	}
-	//	feed, err := service.FetchFeed(context.Background(), feedUrl)
-	//if err != nil {
-	//	return fmt.Errorf("unable to fetch feed: %v", feedUrl)
-	//}
-
-	//for _, item := range feed.Channel.Item {
-	//	fmt.Printf("Feed: %+v\n", item.Title)
-	//}
-
 }
 
 func handlerLogin(s *state, cmd command, user database.User) error {
@@ -241,5 +237,35 @@ func handlerFollowing(s *state, cmd command, user database.User) error {
 		fmt.Printf("Feed Name: %v\n", feed.Feedname)
 	}
 
+	return nil
+}
+
+func handlerBrowse(s *state, cmd command, user database.User) error {
+	limit := 1
+
+	if len(cmd.args) == 0 {
+		return fmt.Errorf("useage: %v <limit>\nwhere limit between 1 and 100", cmd.name)
+	}
+
+	if providedLimit, err := strconv.Atoi(cmd.args[0]); err == nil {
+		limit = providedLimit
+	} else {
+		return fmt.Errorf("invalid limit: %v", err)
+	}
+
+	getPostForUserParams := database.GetPostsForUserParams{UserID: user.ID, Limit: int32(limit)}
+	posts, err := s.db.GetPostsForUser(context.Background(), getPostForUserParams)
+	if err != nil {
+		return fmt.Errorf("couldn't get posts for user: %v", err)
+	}
+
+	fmt.Printf("Found %v posts for user %v:\n", len(posts), user.Name)
+	for _, post := range posts {
+		fmt.Printf("%s from %s\n", post.PublishedAt.Time.Format("Mon Jan 2"), post.FeedName)
+		fmt.Printf("--- %s ---\n", post.Title)
+		fmt.Printf("    %v\n", post.Description.String)
+		fmt.Printf("Link: %s\n", post.Url)
+		fmt.Println("=====================================")
+	}
 	return nil
 }

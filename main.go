@@ -44,6 +44,7 @@ func main() {
 	commandStore.register("follow", middlewareValidateUser(handlerFollow))
 	commandStore.register("unfollow", middlewareValidateUser(handlerUnfollow))
 	commandStore.register("following", middlewareValidateUser(handlerFollowing))
+	commandStore.register("browse", middlewareValidateUser(handlerBrowse))
 
 	err := commandStore.run(&appState, command)
 	if err != nil {
